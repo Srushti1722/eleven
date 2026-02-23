@@ -29,13 +29,19 @@ export async function POST(req: Request) {
       throw new Error('LIVEKIT_API_SECRET is not defined');
     }
 
-    // Parse agent configuration from request body
+    // Parse agent configuration from request body.  Besides the sandbox
+    // room_config, clients may also include `identity` and `name` to
+    // personalise the token (we'll use the email as the identity).
     const body = await req.json();
     const agentName: string = body?.room_config?.agents?.[0]?.agent_name;
 
-    // Generate participant token
-    const participantName = 'user';
-    const participantIdentity = `voice_assistant_user_${Math.floor(Math.random() * 10_000)}`;
+    // Generate participant token.  If the client supplied an explicit
+    // identity (we expect this to be the user's email) or a display name we
+    // honour those values; otherwise fall back to random identifiers so the
+    // existing behaviour continues to work.
+    const participantName = body?.name ?? 'user';
+    const participantIdentity =
+      body?.identity ?? `voice_assistant_user_${Math.floor(Math.random() * 10_000)}`;
     const roomName = `voice_assistant_room_${Math.floor(Math.random() * 10_000)}`;
 
     const participantToken = await createParticipantToken(

@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/components/auth/AuthContext';
 
 function WelcomeImage() {
   return (
@@ -28,10 +29,16 @@ export const WelcomeView = ({
   onStartCall,
   ref,
 }: React.ComponentProps<'div'> & WelcomeViewProps) => {
+  const { user } = useAuth();
+
   return (
     <div ref={ref}>
       <section className="bg-background flex flex-col items-center justify-center text-center">
         <WelcomeImage />
+
+        {user && (
+          <p className="text-foreground mb-2 font-medium">Welcome, {user.name || user.email}</p>
+        )}
 
         <p className="text-foreground max-w-prose pt-1 leading-6 font-medium">
           Chat live with your voice AI agent
