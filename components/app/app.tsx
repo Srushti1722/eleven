@@ -56,37 +56,40 @@ function AppInner({ appConfig, user }: AppInnerProps) {
   // when a user exists; gating happens one level above.
   const { logout } = useAuth();
   const tokenSource = useMemo(() => {
-    const identity = user.email;
-    const name = user.name;
+  // 🚨 guard: user data not ready yet
+  if (!user?.email || !user?.name) {
+    return null;
+  }
 
-    if (typeof process.env.NEXT_PUBLIC_CONN_DETAILS_ENDPOINT === 'string') {
-      return getSandboxTokenSource(appConfig, identity, name);
+  const identity = user.email;
+  const name = user.name;
+
+  return TokenSource.custom(async () => {
+    const body: Record<string, unknown> = {
+      identity,
+      name,
+    };
+
+    if (appConfig.agentName) {
+      body.room_config = {
+        agents: [{ agent_name: appConfig.agentName }],
+      };
     }
 
-    return TokenSource.custom(async () => {
-      const body: Record<string, any> = {};
-      if (identity) body.identity = identity;
-      if (name) body.name = name;
-      if (appConfig.agentName) {
-        body.room_config = {
-          agents: [{ agent_name: appConfig.agentName }],
-        };
-      }
-      try {
-        const res = await fetch('/api/connection-details', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(body),
-        });
-        return await res.json();
-      } catch (err) {
-        console.error('error fetching connection details', err);
-        throw err;
-      }
+    const res = await fetch('/api/connection-details', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
     });
-  }, [appConfig, user.email, user.name]);
+
+    if (!res.ok) {
+      throw new Error('Failed to fetch connection details');
+    }
+
+    return res.json();
+  });
+}, [appConfig.agentName, user?.email, user?.name]);
+  
 
   const session = useSession(
     tokenSource,
