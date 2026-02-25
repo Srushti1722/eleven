@@ -102,12 +102,15 @@ export function getSandboxTokenSource(
 ) {
   return TokenSource.custom(async () => {
     const url = new URL(process.env.NEXT_PUBLIC_CONN_DETAILS_ENDPOINT!, window.location.origin);
-    const sandboxId = appConfig.sandboxId ?? '';
-    const roomConfig = appConfig.agentName
-      ? {
-          agents: [{ agent_name: appConfig.agentName }],
-        }
-      : undefined;
+    const sandboxId = appConfig.sandboxId ?? 'local';
+    const roomConfig = {
+      agents: [
+       {
+          agent_name: 'Casey-10b',
+        },
+      ],
+    }
+      
 
     const body: Record<string, any> = { room_config: roomConfig };
     if (identity) body.identity = identity;
