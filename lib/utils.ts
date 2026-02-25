@@ -106,7 +106,7 @@ export function getSandboxTokenSource(
     const roomConfig = {
       agents: [
        {
-          agent_name: 'Casey-10b',
+          agent_name: 'Casey-10be',
         },
       ],
     }
