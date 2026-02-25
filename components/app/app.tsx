@@ -11,7 +11,6 @@ import { ViewController } from '@/components/app/view-controller';
 import { Toaster } from '@/components/ui/sonner';
 import { useAgentErrors } from '@/hooks/useAgentErrors';
 import { useDebugMode } from '@/hooks/useDebug';
-import { getSandboxTokenSource } from '@/lib/utils';
 
 // authentication
 import { AuthProvider, useAuth } from '@/components/auth/AuthContext';
@@ -41,55 +40,52 @@ export function App({ appConfig }: AppProps) {
 // separate component renders either auth flow or the main application
 function AppWithAuth({ appConfig }: AppProps) {
   const { user } = useAuth();
-  if (!user) {
+
+  // Guard: if user is not logged in OR email/name not ready, show auth page
+  if (!user || !user.email || !user.name) {
     return <AuthPage appConfig={appConfig} />;
   }
-  return <AppInner appConfig={appConfig} user={user} />;
+
+  return <AppInner appConfig={appConfig} user={user as { email: string; name: string }} />;
 }
 
 interface AppInnerProps extends AppProps {
-  user: { email: string; name?: string };
+  user: { email: string; name: string }; // name is now required, not optional
 }
 
 function AppInner({ appConfig, user }: AppInnerProps) {
-  // hooks order is now stable because this component always renders only
-  // when a user exists; gating happens one level above.
   const { logout } = useAuth();
+
+  // tokenSource is always valid here because AppWithAuth guarantees email and name exist
   const tokenSource = useMemo(() => {
-  // 🚨 guard: user data not ready yet
-  if (!user?.email || !user?.name) {
-    return null;
-  }
+    const identity = user.email;
+    const name = user.name;
 
-  const identity = user.email;
-  const name = user.name;
-
-  return TokenSource.custom(async () => {
-    const body: Record<string, unknown> = {
-      identity,
-      name,
-    };
-
-    if (appConfig.agentName) {
-      body.room_config = {
-        agents: [{ agent_name: appConfig.agentName }],
+    return TokenSource.custom(async () => {
+      const body: Record<string, unknown> = {
+        identity,
+        name,
       };
-    }
 
-    const res = await fetch('/api/connection-details', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      if (appConfig.agentName) {
+        body.room_config = {
+          agents: [{ agent_name: appConfig.agentName }],
+        };
+      }
+
+      const res = await fetch('/api/connection-details', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to fetch connection details');
+      }
+
+      return res.json();
     });
-
-    if (!res.ok) {
-      throw new Error('Failed to fetch connection details');
-    }
-
-    return res.json();
-  });
-}, [appConfig.agentName, user?.email, user?.name]);
-  
+  }, [appConfig.agentName, user.email, user.name]);
 
   const session = useSession(
     tokenSource,
