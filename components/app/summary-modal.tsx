@@ -4,6 +4,7 @@ import React, { useState, useCallback } from 'react';
 import type { ReceivedMessage } from '@livekit/components-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/shadcn/utils';
+import { useAuth } from '@/components/auth/AuthContext';
 
 interface SummaryData {
   overview: string;
@@ -17,43 +18,33 @@ interface SummaryModalProps {
 }
 
 export function SummaryModal({ messages }: SummaryModalProps) {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<SummaryData | null>(null);
 
   const fetchSummary = useCallback(async () => {
-    if (messages.length === 0) {
-      setError('No conversation yet — start talking first.');
-      return;
-    }
-
     setLoading(true);
     setError(null);
     setSummary(null);
 
     try {
-      // Build transcript from LiveKit messages already in the browser
-      const transcript = messages
-        .map((m) => {
-          // ReceivedChatMessage has .message; ReceivedUserTranscriptionMessage has .segment
-          const content =
-            'message' in m
-              ? (m as { message: string }).message
-              : (m as unknown as { segment?: string }).segment ?? null;
-          if (!content) return null;
-          return {
-            role: m.from?.isLocal ? 'user' : 'assistant',
-            content,
-          };
-        })
-        .filter(Boolean);
+      // Use the logged-in user's email as user_id so each user gets their own mem0 summary
+      const userId = user?.email ?? 'default_user';
+      const base =
+        process.env.NEXT_PUBLIC_AGENT_SERVER_URL?.replace(/\/$/, '') ?? 'http://localhost:8080';
+      const url = `${base}/summary?user_id=${encodeURIComponent(userId)}`;
 
-      const res = await fetch('/api/summarize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: transcript }),
-      });
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 30_000);
+
+      let res: Response;
+      try {
+        res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
+      } finally {
+        clearTimeout(timer);
+      }
 
       const data = await res.json();
 
@@ -62,8 +53,13 @@ export function SummaryModal({ messages }: SummaryModalProps) {
       } else {
         setSummary(data as SummaryData);
       }
-    } catch (err) {
-      setError('Failed to generate summary. Please try again.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('abort')) {
+        setError('Request timed out. Is the agent server running?');
+      } else {
+        setError('Failed to generate summary. Please try again.');
+      }
       console.error('[summary]', err);
     } finally {
       setLoading(false);
