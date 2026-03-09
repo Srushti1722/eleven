@@ -49,7 +49,8 @@ export async function POST(req: NextRequest) {
       });
     }
   } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
     console.error('[summarize]', err);
-    return NextResponse.json({ error: 'Failed to generate summary.' }, { status: 500 });
+    return NextResponse.json({ error: `Failed to generate summary: ${msg}` }, { status: 500 });
   }
 }
