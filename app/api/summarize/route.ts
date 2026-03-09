@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const SUMMARY_SYSTEM_PROMPT = `You are a helpful assistant that summarises voice-call transcripts.
 Given the conversation below, produce a concise, human-readable summary.
@@ -29,19 +29,14 @@ export async function POST(req: NextRequest) {
       .map((m: { role: string; content: string }) => `${m.role.toUpperCase()}: ${m.content}`)
       .join('\n');
 
-    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? '');
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-    const response = await client.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: SUMMARY_SYSTEM_PROMPT },
-        { role: 'user', content: convoText },
-      ],
-      temperature: 0.3,
-      max_tokens: 600,
-    });
+    const result = await model.generateContent(
+      `${SUMMARY_SYSTEM_PROMPT}\n\n${convoText}`
+    );
 
-    const raw = response.choices[0].message.content?.trim() ?? '';
+    const raw = result.response.text().trim();
 
     try {
       return NextResponse.json(JSON.parse(raw));
