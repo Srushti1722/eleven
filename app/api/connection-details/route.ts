@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { AccessToken, type AccessTokenOptions, type VideoGrant, RoomServiceClient } from 'livekit-server-sdk';
+import { AccessToken, type AccessTokenOptions, type VideoGrant } from 'livekit-server-sdk';
 import { RoomConfiguration } from '@livekit/protocol';
 
 type ConnectionDetails = {
@@ -47,14 +47,6 @@ export async function POST(req: Request) {
     // Sanitise the identity so it's safe in a room name (replace non-alphanumeric with _).
     const safeIdentity = participantIdentity.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 40);
     const roomName = `room_${safeIdentity}_${Date.now()}`;
-
-    // Pre-create the room with user_id in metadata so ctx.room.metadata
-    // is populated when the Python agent's entrypoint() runs.
-    const roomService = new RoomServiceClient(LIVEKIT_URL, API_KEY, API_SECRET);
-    await roomService.createRoom({
-      name: roomName,
-      metadata: JSON.stringify({ user_id: participantIdentity }),
-    });
 
     const participantToken = await createParticipantToken(
       { identity: participantIdentity, name: participantName },

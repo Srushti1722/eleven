@@ -147,7 +147,7 @@ export const SessionView = ({
         <div className="bg-background relative mx-auto max-w-2xl pb-3 md:pb-12">
           <Fade bottom className="absolute inset-x-0 top-0 h-4 -translate-y-full" />
           <div className="flex justify-center pb-2">
-            <SummaryModal />
+            <SummaryModal messages={messages} />
           </div>
           <AgentControlBar
             variant="livekit"

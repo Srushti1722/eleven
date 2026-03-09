@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
+import type { ReceivedMessage } from '@livekit/components-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/shadcn/utils';
 import { useAuth } from '@/components/auth/AuthContext';
@@ -12,18 +13,57 @@ interface SummaryData {
   topics_discussed: string[];
 }
 
-export function SummaryModal() {
+interface SummaryModalProps {
+  messages: ReceivedMessage[];
+}
+
+export function SummaryModal({ messages }: SummaryModalProps) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<SummaryData | null>(null);
 
+  // Fallback: summarise the current live session via Gemini if mem0 has no history yet
+  const geminiSummary = useCallback(async (): Promise<SummaryData | null> => {
+    if (messages.length === 0) return null;
+    const formatted = messages.map((m) => ({
+      role: m.from?.isLocal ? 'user' : 'assistant',
+      content: m.message,
+    }));
+    try {
+      const res = await fetch('/api/summarize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: formatted }),
+        cache: 'no-store',
+      });
+      if (!res.ok) return null;
+      return res.json() as Promise<SummaryData>;
+    } catch {
+      return null;
+    }
+  }, [messages]);
+
   const fetchSummary = useCallback(async () => {
     setLoading(true);
     setError(null);
     setSummary(null);
 
+    // If there are live session messages, summarise them with Gemini right away.
+    // Only hit the backend (mem0 history) when there is no current transcript.
+    if (messages.length > 0) {
+      const result = await geminiSummary();
+      setLoading(false);
+      if (result) {
+        setSummary(result);
+      } else {
+        setError('Could not generate summary. Make sure GEMINI_API_KEY is configured in your deployment.');
+      }
+      return;
+    }
+
+    // No live messages — fetch historical mem0 summary from the backend.
     const userId = user?.email ?? 'default_user';
     const base =
       process.env.NEXT_PUBLIC_APP_CONFIG_ENDPOINT?.replace(/\/$/, '') ?? 'http://localhost:8080';
@@ -57,7 +97,7 @@ export function SummaryModal() {
     } finally {
       setLoading(false);
     }
-  }, [user?.email]);
+  }, [messages, user?.email, geminiSummary]);
 
   const handleOpen = () => {
     setOpen(true);
