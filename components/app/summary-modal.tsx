@@ -33,7 +33,7 @@ export function SummaryModal({ messages }: SummaryModalProps) {
       // Use the logged-in user's email as user_id so each user gets their own mem0 summary
       const userId = user?.email ?? 'default_user';
       const base =
-        process.env.NEXT_PUBLIC_AGENT_SERVER_URL?.replace(/\/$/, '') ?? 'http://localhost:8080';
+        process.env.NEXT_PUBLIC_APP_CONFIG_ENDPOINT?.replace(/\/$/, '') ?? 'http://localhost:8080';
       const url = `${base}/summary?user_id=${encodeURIComponent(userId)}`;
 
       const controller = new AbortController();
@@ -56,7 +56,7 @@ export function SummaryModal({ messages }: SummaryModalProps) {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       const base =
-        process.env.NEXT_PUBLIC_AGENT_SERVER_URL?.replace(/\/$/, '') ?? 'http://localhost:8080';
+        process.env.NEXT_PUBLIC_APP_CONFIG_ENDPOINT?.replace(/\/$/, '') ?? 'http://localhost:8080';
       if (msg.includes('abort')) {
         setError(`Request timed out.\nAgent server URL: ${base}`);
       } else {
