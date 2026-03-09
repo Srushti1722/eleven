@@ -24,18 +24,38 @@ export function SummaryModal({ messages }: SummaryModalProps) {
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<SummaryData | null>(null);
 
+  // Fallback: summarise the current live session via Gemini if mem0 has no history yet
+  const geminiSummary = useCallback(async (): Promise<SummaryData | null> => {
+    if (messages.length === 0) return null;
+    const formatted = messages.map((m) => ({
+      role: m.from?.isLocal ? 'user' : 'assistant',
+      content: m.message,
+    }));
+    try {
+      const res = await fetch('/api/summarize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: formatted }),
+        cache: 'no-store',
+      });
+      if (!res.ok) return null;
+      return res.json() as Promise<SummaryData>;
+    } catch {
+      return null;
+    }
+  }, [messages]);
+
   const fetchSummary = useCallback(async () => {
     setLoading(true);
     setError(null);
     setSummary(null);
 
-    try {
-      // Use the logged-in user's email as user_id so each user gets their own mem0 summary
-      const userId = user?.email ?? 'default_user';
-      const base =
-        process.env.NEXT_PUBLIC_APP_CONFIG_ENDPOINT?.replace(/\/$/, '') ?? 'http://localhost:8080';
-      const url = `${base}/summary?user_id=${encodeURIComponent(userId)}`;
+    const userId = user?.email ?? 'default_user';
+    const base =
+      process.env.NEXT_PUBLIC_APP_CONFIG_ENDPOINT?.replace(/\/$/, '') ?? 'http://localhost:8080';
 
+    try {
+      const url = `${base}/summary?user_id=${encodeURIComponent(userId)}`;
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 30_000);
 
@@ -49,24 +69,38 @@ export function SummaryModal({ messages }: SummaryModalProps) {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error ?? `Server error ${res.status}`);
+        // Backend error — try local Gemini fallback
+        const fallback = await geminiSummary();
+        if (fallback) { setSummary(fallback); } else { setError(data.error ?? `Server error ${res.status}`); }
       } else {
-        setSummary(data as SummaryData);
+        // If mem0 has no history yet but we have live messages, use Gemini instead
+        const noHistory =
+          !data.key_points?.length &&
+          !data.topics_discussed?.length &&
+          data.overview?.toLowerCase().includes('no conversation history');
+        if (noHistory && messages.length > 0) {
+          const fallback = await geminiSummary();
+          setSummary(fallback ?? (data as SummaryData));
+        } else {
+          setSummary(data as SummaryData);
+        }
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      const base =
-        process.env.NEXT_PUBLIC_APP_CONFIG_ENDPOINT?.replace(/\/$/, '') ?? 'http://localhost:8080';
-      if (msg.includes('abort')) {
+      // Try local Gemini fallback before surfacing the error
+      const fallback = await geminiSummary();
+      if (fallback) {
+        setSummary(fallback);
+      } else if (msg.includes('abort')) {
         setError(`Request timed out.\nAgent server URL: ${base}`);
       } else {
         setError(`Could not reach agent server.\nURL: ${base}\nError: ${msg}`);
+        console.error('[summary]', err);
       }
-      console.error('[summary]', err);
     } finally {
       setLoading(false);
     }
-  }, [messages]);
+  }, [messages, user?.email, geminiSummary]);
 
   const handleOpen = () => {
     setOpen(true);
