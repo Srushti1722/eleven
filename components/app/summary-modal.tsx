@@ -24,20 +24,42 @@ export function SummaryModal() {
     setError(null);
     setSummary(null);
 
+    const roomName = room?.name ?? '';
+    const base =
+      process.env.NEXT_PUBLIC_AGENT_SERVER_URL?.replace(/\/$/, '') ?? 'http://localhost:8080';
+    const url = `${base}/summary?room=${encodeURIComponent(roomName)}`;
+
     try {
-      const roomName = room?.name ?? '';
-      const base =
-        process.env.NEXT_PUBLIC_AGENT_SERVER_URL?.replace(/\/$/, '') ?? 'http://localhost:8080';
-      const res = await fetch(`${base}/summary?room=${encodeURIComponent(roomName)}`);
+      if (!roomName) {
+        setError('No active room — start a call first.');
+        return;
+      }
+
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 10_000);
+
+      let res: Response;
+      try {
+        res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
+      } finally {
+        clearTimeout(timer);
+      }
+
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error ?? 'Failed to fetch summary');
+        setError(data.error ?? `Server error ${res.status}`);
       } else {
         setSummary(data as SummaryData);
       }
-    } catch {
-      setError('Could not reach server');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('aborted') || msg.includes('abort')) {
+        setError(`Request timed out. Is the agent server running at:\n${base}`);
+      } else {
+        setError(`Could not reach agent server at:\n${base}\n\nError: ${msg}`);
+      }
+      console.error('[summary] fetch failed', url, err);
     } finally {
       setLoading(false);
     }
@@ -104,7 +126,7 @@ export function SummaryModal() {
               )}
 
               {error && (
-                <p className="text-destructive text-center py-8">{error}</p>
+                <p className="text-destructive text-center py-8 whitespace-pre-wrap text-xs">{error}</p>
               )}
 
               {summary && !loading && (
