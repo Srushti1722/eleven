@@ -20,48 +20,78 @@ export function SummaryModal() {
   const [summary, setSummary] = useState<SummaryData | null>(null);
 
   const fetchSummary = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    setSummary(null);
-
     const roomName = room?.name ?? '';
     const base =
       process.env.NEXT_PUBLIC_AGENT_SERVER_URL?.replace(/\/$/, '') ?? 'http://localhost:8080';
     const url = `${base}/summary?room=${encodeURIComponent(roomName)}`;
 
-    try {
-      if (!roomName) {
-        setError('No active room — start a call first.');
+    if (!roomName) {
+      setError('No active room — start a call first.');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setSummary(null);
+
+    // The agent takes ~2s to register after room creation (mem0 fetch delay).
+    // Retry up to 6 times with backoff before giving up.
+    const MAX_ATTEMPTS = 6;
+    const DELAYS_MS = [600, 1000, 1500, 2000, 2500, 3000];
+
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 10_000);
+
+        let res: Response;
+        try {
+          res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
+        } finally {
+          clearTimeout(timer);
+        }
+
+        // 404 = agent not registered yet, wait and retry
+        if (res.status === 404) {
+          if (attempt < MAX_ATTEMPTS - 1) {
+            await new Promise(r => setTimeout(r, DELAYS_MS[attempt]));
+            continue;
+          }
+          setError('Agent session not ready yet — please try again in a moment.');
+          setLoading(false);
+          return;
+        }
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          setError(data.error ?? `Server error ${res.status}`);
+          setLoading(false);
+          return;
+        }
+
+        setSummary(data as SummaryData);
+        setLoading(false);
+        return; // success
+
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        const isAbort = msg.includes('aborted') || msg.includes('abort');
+
+        if (!isAbort && attempt < MAX_ATTEMPTS - 1) {
+          await new Promise(r => setTimeout(r, DELAYS_MS[attempt]));
+          continue;
+        }
+
+        if (isAbort) {
+          setError(`Request timed out. Is the agent server running at:\n${base}`);
+        } else {
+          setError(`Could not reach agent server at:\n${base}\n\nError: ${msg}`);
+        }
+        console.error('[summary] fetch failed', url, err);
+        setLoading(false);
         return;
       }
-
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 10_000);
-
-      let res: Response;
-      try {
-        res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
-      } finally {
-        clearTimeout(timer);
-      }
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error ?? `Server error ${res.status}`);
-      } else {
-        setSummary(data as SummaryData);
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes('aborted') || msg.includes('abort')) {
-        setError(`Request timed out. Is the agent server running at:\n${base}`);
-      } else {
-        setError(`Could not reach agent server at:\n${base}\n\nError: ${msg}`);
-      }
-      console.error('[summary] fetch failed', url, err);
-    } finally {
-      setLoading(false);
     }
   }, [room]);
 
@@ -77,7 +107,6 @@ export function SummaryModal() {
 
   return (
     <>
-      {/* Trigger button */}
       <Button
         variant="outline"
         size="sm"
@@ -87,16 +116,13 @@ export function SummaryModal() {
         Summary
       </Button>
 
-      {/* Backdrop + Modal */}
       {open && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center p-4"
           onClick={handleClose}
         >
-          {/* Backdrop */}
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
 
-          {/* Panel */}
           <div
             className={cn(
               'relative z-10 w-full max-w-lg rounded-2xl',
@@ -105,7 +131,6 @@ export function SummaryModal() {
             )}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-border">
               <h2 className="text-base font-semibold">Conversation Summary</h2>
               <button
@@ -117,7 +142,6 @@ export function SummaryModal() {
               </button>
             </div>
 
-            {/* Body */}
             <div className="overflow-y-auto px-6 py-4 space-y-5 text-sm">
               {loading && (
                 <p className="text-muted-foreground animate-pulse text-center py-8">
@@ -125,13 +149,17 @@ export function SummaryModal() {
                 </p>
               )}
 
-              {error && (
-                <p className="text-destructive text-center py-8 whitespace-pre-wrap text-xs">{error}</p>
+              {error && !loading && (
+                <div className="flex flex-col items-center gap-3 py-8 text-center">
+                  <p className="text-destructive whitespace-pre-wrap text-xs">{error}</p>
+                  <Button variant="outline" size="sm" onClick={fetchSummary}>
+                    Try again
+                  </Button>
+                </div>
               )}
 
               {summary && !loading && (
                 <>
-                  {/* Overview */}
                   {summary.overview && (
                     <section>
                       <h3 className="font-semibold mb-1 text-foreground">Overview</h3>
@@ -139,7 +167,6 @@ export function SummaryModal() {
                     </section>
                   )}
 
-                  {/* Key Points */}
                   {summary.key_points?.length > 0 && (
                     <section>
                       <h3 className="font-semibold mb-1 text-foreground">Key Points</h3>
@@ -151,7 +178,6 @@ export function SummaryModal() {
                     </section>
                   )}
 
-                  {/* Action Items */}
                   {summary.action_items?.length > 0 && (
                     <section>
                       <h3 className="font-semibold mb-1 text-foreground">Action Items</h3>
@@ -163,7 +189,6 @@ export function SummaryModal() {
                     </section>
                   )}
 
-                  {/* Topics Discussed */}
                   {summary.topics_discussed?.length > 0 && (
                     <section>
                       <h3 className="font-semibold mb-1 text-foreground">Topics Discussed</h3>
@@ -183,7 +208,6 @@ export function SummaryModal() {
               )}
             </div>
 
-            {/* Footer */}
             <div className="px-6 py-3 border-t border-border flex justify-end gap-2">
               <Button variant="ghost" size="sm" onClick={fetchSummary} disabled={loading}>
                 Refresh
