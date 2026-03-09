@@ -26,7 +26,9 @@ export function SummaryModal() {
 
     try {
       const roomName = room?.name ?? '';
-      const res = await fetch(`/api/summary?room=${encodeURIComponent(roomName)}`);
+      const base =
+        process.env.NEXT_PUBLIC_AGENT_SERVER_URL?.replace(/\/$/, '') ?? 'http://localhost:8080';
+      const res = await fetch(`${base}/summary?room=${encodeURIComponent(roomName)}`);
       const data = await res.json();
 
       if (!res.ok) {
