@@ -55,10 +55,12 @@ export function SummaryModal({ messages }: SummaryModalProps) {
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
+      const base =
+        process.env.NEXT_PUBLIC_AGENT_SERVER_URL?.replace(/\/$/, '') ?? 'http://localhost:8080';
       if (msg.includes('abort')) {
-        setError('Request timed out. Is the agent server running?');
+        setError(`Request timed out.\nAgent server URL: ${base}`);
       } else {
-        setError('Failed to generate summary. Please try again.');
+        setError(`Could not reach agent server.\nURL: ${base}\nError: ${msg}`);
       }
       console.error('[summary]', err);
     } finally {
