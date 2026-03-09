@@ -50,6 +50,20 @@ export function SummaryModal({ messages }: SummaryModalProps) {
     setError(null);
     setSummary(null);
 
+    // If there are live session messages, summarise them with Gemini right away.
+    // Only hit the backend (mem0 history) when there is no current transcript.
+    if (messages.length > 0) {
+      const result = await geminiSummary();
+      setLoading(false);
+      if (result) {
+        setSummary(result);
+      } else {
+        setError('Could not generate summary. Make sure GEMINI_API_KEY is configured in your deployment.');
+      }
+      return;
+    }
+
+    // No live messages — fetch historical mem0 summary from the backend.
     const userId = user?.email ?? 'default_user';
     const base =
       process.env.NEXT_PUBLIC_APP_CONFIG_ENDPOINT?.replace(/\/$/, '') ?? 'http://localhost:8080';
@@ -67,31 +81,14 @@ export function SummaryModal({ messages }: SummaryModalProps) {
       }
 
       const data = await res.json();
-
       if (!res.ok) {
-        // Backend error — try local Gemini fallback
-        const fallback = await geminiSummary();
-        if (fallback) { setSummary(fallback); } else { setError(data.error ?? `Server error ${res.status}`); }
+        setError(data.error ?? `Server error ${res.status}`);
       } else {
-        // If mem0 has no history yet but we have live messages, use Gemini instead
-        const noHistory =
-          !data.key_points?.length &&
-          !data.topics_discussed?.length &&
-          data.overview?.toLowerCase().includes('no conversation history');
-        if (noHistory && messages.length > 0) {
-          const fallback = await geminiSummary();
-          setSummary(fallback ?? (data as SummaryData));
-        } else {
-          setSummary(data as SummaryData);
-        }
+        setSummary(data as SummaryData);
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      // Try local Gemini fallback before surfacing the error
-      const fallback = await geminiSummary();
-      if (fallback) {
-        setSummary(fallback);
-      } else if (msg.includes('abort')) {
+      if (msg.includes('abort')) {
         setError(`Request timed out.\nAgent server URL: ${base}`);
       } else {
         setError(`Could not reach agent server.\nURL: ${base}\nError: ${msg}`);
