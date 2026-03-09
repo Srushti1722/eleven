@@ -12,6 +12,7 @@ import { ChatTranscript } from '@/components/app/chat-transcript';
 import { TileLayout } from '@/components/app/tile-layout';
 import { cn } from '@/lib/shadcn/utils';
 import { Shimmer } from '../ai-elements/shimmer';
+import { SummaryModal } from '@/components/app/summary-modal';
 
 const MotionBottom = motion.create('div');
 
@@ -145,6 +146,9 @@ export const SessionView = ({
         )}
         <div className="bg-background relative mx-auto max-w-2xl pb-3 md:pb-12">
           <Fade bottom className="absolute inset-x-0 top-0 h-4 -translate-y-full" />
+          <div className="flex justify-center pb-2">
+            <SummaryModal />
+          </div>
           <AgentControlBar
             variant="livekit"
             controls={controls}
