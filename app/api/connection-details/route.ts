@@ -9,36 +9,48 @@ type ConnectionDetails = {
   participantToken: string;
 };
 
+// NOTE: you are expected to define the following environment variables in `.env.local`:
 const API_KEY = process.env.LIVEKIT_API_KEY;
 const API_SECRET = process.env.LIVEKIT_API_SECRET;
 const LIVEKIT_URL = process.env.LIVEKIT_URL;
 
+// don't cache the results
 export const revalidate = 0;
 
 export async function POST(req: Request) {
   try {
-    if (LIVEKIT_URL === undefined) throw new Error('LIVEKIT_URL is not defined');
-    if (API_KEY === undefined) throw new Error('LIVEKIT_API_KEY is not defined');
-    if (API_SECRET === undefined) throw new Error('LIVEKIT_API_SECRET is not defined');
+    if (LIVEKIT_URL === undefined) {
+      throw new Error('LIVEKIT_URL is not defined');
+    }
+    if (API_KEY === undefined) {
+      throw new Error('LIVEKIT_API_KEY is not defined');
+    }
+    if (API_SECRET === undefined) {
+      throw new Error('LIVEKIT_API_SECRET is not defined');
+    }
 
+    // Parse agent configuration from request body.  Besides the sandbox
+    // room_config, clients may also include `identity` and `name` to
+    // personalise the token (we'll use the email as the identity).
     const body = await req.json();
     const agentName: string = body?.room_config?.agents?.[0]?.agent_name;
 
+    // Generate participant token.  If the client supplied an explicit
+    // identity (we expect this to be the user's email) or a display name we
+    // honour those values; otherwise fall back to random identifiers so the
+    // existing behaviour continues to work.
     const participantName = body?.name ?? 'user';
-    // Use the supplied identity (user email/ID) or fall back to a random one
     const participantIdentity =
       body?.identity ?? `voice_assistant_user_${Math.floor(Math.random() * 10_000)}`;
 
+    // Make the room name unique per user + timestamp so two users never collide.
+    // Sanitise the identity so it's safe in a room name (replace non-alphanumeric with _).
     const safeIdentity = participantIdentity.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 40);
-    const roomName = `voice_assistant_room_${safeIdentity}_${Date.now()}`;
+    const roomName = `room_${safeIdentity}_${Date.now()}`;
 
-    // Create the room with metadata BEFORE the agent joins
-    // so ctx.room.metadata is populated when entrypoint() runs
-    const roomService = new RoomServiceClient(
-      LIVEKIT_URL,
-      API_KEY,
-      API_SECRET,
-    );
+    // Pre-create the room with user_id in metadata so ctx.room.metadata
+    // is populated when the Python agent's entrypoint() runs.
+    const roomService = new RoomServiceClient(LIVEKIT_URL, API_KEY, API_SECRET);
     await roomService.createRoom({
       name: roomName,
       metadata: JSON.stringify({ user_id: participantIdentity }),
@@ -47,19 +59,20 @@ export async function POST(req: Request) {
     const participantToken = await createParticipantToken(
       { identity: participantIdentity, name: participantName },
       roomName,
-      agentName,
+      agentName
     );
 
+    // Return connection details
     const data: ConnectionDetails = {
       serverUrl: LIVEKIT_URL,
       roomName,
-      participantToken,
+      participantToken: participantToken,
       participantName,
     };
-
-    return NextResponse.json(data, {
-      headers: { 'Cache-Control': 'no-store' },
+    const headers = new Headers({
+      'Cache-Control': 'no-store',
     });
+    return NextResponse.json(data, { headers });
   } catch (error) {
     if (error instanceof Error) {
       console.error(error);
@@ -71,7 +84,7 @@ export async function POST(req: Request) {
 function createParticipantToken(
   userInfo: AccessTokenOptions,
   roomName: string,
-  agentName?: string,
+  agentName?: string
 ): Promise<string> {
   const at = new AccessToken(API_KEY, API_SECRET, {
     ...userInfo,
