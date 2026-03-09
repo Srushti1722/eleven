@@ -42,7 +42,11 @@ export async function POST(req: Request) {
     const participantName = body?.name ?? 'user';
     const participantIdentity =
       body?.identity ?? `voice_assistant_user_${Math.floor(Math.random() * 10_000)}`;
-    const roomName = `voice_assistant_room_${Math.floor(Math.random() * 10_000)}`;
+
+    // Make the room name unique per user + timestamp so two users never collide.
+    // Sanitise the identity so it's safe in a room name (replace non-alphanumeric with _).
+    const safeIdentity = participantIdentity.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 40);
+    const roomName = `room_${safeIdentity}_${Date.now()}`;
 
     const participantToken = await createParticipantToken(
       { identity: participantIdentity, name: participantName },
