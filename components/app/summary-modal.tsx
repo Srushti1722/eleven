@@ -58,7 +58,7 @@ export function SummaryModal({ messages }: SummaryModalProps) {
       if (result) {
         setSummary(result);
       } else {
-        setError('Could not generate summary. Make sure GEMINI_API_KEY is configured in your deployment.');
+        setError('Could not generate summary. Make sure GOOGLE_API_KEY is configured in your deployment.');
       }
       return;
     }

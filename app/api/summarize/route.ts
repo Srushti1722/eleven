@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
       .map((m: { role: string; content: string }) => `${m.role.toUpperCase()}: ${m.content}`)
       .join('\n');
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? '');
+    const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY ?? '');
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
     const result = await model.generateContent(
