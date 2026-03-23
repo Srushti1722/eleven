@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import type { ReceivedMessage } from '@livekit/components-react';
+import { useAuth } from '@/components/auth/AuthContext';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/shadcn/utils';
-import { useAuth } from '@/components/auth/AuthContext';
 
 interface SummaryData {
   overview: string;
@@ -58,7 +58,9 @@ export function SummaryModal({ messages }: SummaryModalProps) {
       if (result) {
         setSummary(result);
       } else {
-        setError('Could not generate summary. Make sure GOOGLE_API_KEY is configured in your deployment.');
+        setError(
+          'Could not generate summary. Make sure GOOGLE_API_KEY is configured in your deployment.'
+        );
       }
       return;
     }
@@ -130,32 +132,32 @@ export function SummaryModal({ messages }: SummaryModalProps) {
           <div
             className={cn(
               'relative z-10 w-full max-w-lg rounded-2xl',
-              'bg-background border border-border shadow-2xl',
-              'flex flex-col max-h-[80vh]'
+              'bg-background border-border border shadow-2xl',
+              'flex max-h-[80vh] flex-col'
             )}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+            <div className="border-border flex items-center justify-between border-b px-6 py-4">
               <h2 className="text-base font-semibold">Conversation Summary</h2>
               <button
                 onClick={handleClose}
-                className="text-muted-foreground hover:text-foreground transition-colors text-lg leading-none"
+                className="text-muted-foreground hover:text-foreground text-lg leading-none transition-colors"
                 aria-label="Close"
               >
                 ✕
               </button>
             </div>
 
-            <div className="overflow-y-auto px-6 py-4 space-y-5 text-sm">
+            <div className="space-y-5 overflow-y-auto px-6 py-4 text-sm">
               {loading && (
-                <p className="text-muted-foreground animate-pulse text-center py-8">
+                <p className="text-muted-foreground animate-pulse py-8 text-center">
                   Generating summary…
                 </p>
               )}
 
               {error && !loading && (
                 <div className="flex flex-col items-center gap-3 py-8 text-center">
-                  <p className="text-destructive whitespace-pre-wrap text-xs">{error}</p>
+                  <p className="text-destructive text-xs whitespace-pre-wrap">{error}</p>
                   <Button variant="outline" size="sm" onClick={fetchSummary}>
                     Try again
                   </Button>
@@ -166,15 +168,15 @@ export function SummaryModal({ messages }: SummaryModalProps) {
                 <>
                   {summary.overview && (
                     <section>
-                      <h3 className="font-semibold mb-1 text-foreground">Overview</h3>
+                      <h3 className="text-foreground mb-1 font-semibold">Overview</h3>
                       <p className="text-muted-foreground leading-relaxed">{summary.overview}</p>
                     </section>
                   )}
 
                   {summary.key_points?.length > 0 && (
                     <section>
-                      <h3 className="font-semibold mb-1 text-foreground">Key Points</h3>
-                      <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                      <h3 className="text-foreground mb-1 font-semibold">Key Points</h3>
+                      <ul className="text-muted-foreground list-inside list-disc space-y-1">
                         {summary.key_points.map((pt, i) => (
                           <li key={i}>{pt}</li>
                         ))}
@@ -184,8 +186,8 @@ export function SummaryModal({ messages }: SummaryModalProps) {
 
                   {summary.action_items?.length > 0 && (
                     <section>
-                      <h3 className="font-semibold mb-1 text-foreground">Action Items</h3>
-                      <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                      <h3 className="text-foreground mb-1 font-semibold">Action Items</h3>
+                      <ul className="text-muted-foreground list-inside list-disc space-y-1">
                         {summary.action_items.map((item, i) => (
                           <li key={i}>{item}</li>
                         ))}
@@ -195,12 +197,12 @@ export function SummaryModal({ messages }: SummaryModalProps) {
 
                   {summary.topics_discussed?.length > 0 && (
                     <section>
-                      <h3 className="font-semibold mb-1 text-foreground">Topics Discussed</h3>
+                      <h3 className="text-foreground mb-1 font-semibold">Topics Discussed</h3>
                       <div className="flex flex-wrap gap-2">
                         {summary.topics_discussed.map((topic, i) => (
                           <span
                             key={i}
-                            className="px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground text-xs font-medium"
+                            className="bg-secondary text-secondary-foreground rounded-full px-2 py-0.5 text-xs font-medium"
                           >
                             {topic}
                           </span>
@@ -212,7 +214,7 @@ export function SummaryModal({ messages }: SummaryModalProps) {
               )}
             </div>
 
-            <div className="px-6 py-3 border-t border-border flex justify-end gap-2">
+            <div className="border-border flex justify-end gap-2 border-t px-6 py-3">
               <Button variant="ghost" size="sm" onClick={fetchSummary} disabled={loading}>
                 Refresh
               </Button>

@@ -19,10 +19,7 @@ export async function POST(req: NextRequest) {
     const { messages } = await req.json();
 
     if (!Array.isArray(messages) || messages.length === 0) {
-      return NextResponse.json(
-        { error: 'No conversation messages provided.' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'No conversation messages provided.' }, { status: 400 });
     }
 
     const convoText = messages
@@ -32,9 +29,7 @@ export async function POST(req: NextRequest) {
     const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY ?? '');
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
-    const result = await model.generateContent(
-      `${SUMMARY_SYSTEM_PROMPT}\n\n${convoText}`
-    );
+    const result = await model.generateContent(`${SUMMARY_SYSTEM_PROMPT}\n\n${convoText}`);
 
     const raw = result.response.text().trim();
 

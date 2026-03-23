@@ -1,5 +1,5 @@
-import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/auth/AuthContext';
+import { Button } from '@/components/ui/button';
 
 function WelcomeImage() {
   return (

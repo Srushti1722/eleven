@@ -9,10 +9,10 @@ import {
   type AgentControlBarControls,
 } from '@/components/agents-ui/agent-control-bar';
 import { ChatTranscript } from '@/components/app/chat-transcript';
+import { SummaryModal } from '@/components/app/summary-modal';
 import { TileLayout } from '@/components/app/tile-layout';
 import { cn } from '@/lib/shadcn/utils';
 import { Shimmer } from '../ai-elements/shimmer';
-import { SummaryModal } from '@/components/app/summary-modal';
 
 const MotionBottom = motion.create('div');
 

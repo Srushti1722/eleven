@@ -2,10 +2,10 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from './AuthContext';
 import { AppConfig } from '@/app-config';
-import { cn } from '@/lib/shadcn/utils';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/shadcn/utils';
+import { useAuth } from './AuthContext';
 
 interface AuthPageProps {
   appConfig: AppConfig;
@@ -95,17 +95,17 @@ export function AuthPage({ appConfig }: AuthPageProps) {
   };
 
   return (
-    <div className="h-screen grid place-items-center bg-background">
-      <div className="w-full max-w-md p-8 bg-card shadow-lg rounded-lg">
+    <div className="bg-background grid h-screen place-items-center">
+      <div className="bg-card w-full max-w-md rounded-lg p-8 shadow-lg">
         <div className="mb-6 text-center">
           <h1 className="text-2xl font-bold">{appConfig.pageTitle || 'Voice Agent'}</h1>
         </div>
-        <div className="flex mb-4">
+        <div className="mb-4 flex">
           <button
             className={cn(
               'flex-1 py-2 font-semibold transition-colors',
               mode === 'login'
-                ? 'border-b-2 border-primary text-primary'
+                ? 'border-primary text-primary border-b-2'
                 : 'text-muted-foreground hover:text-foreground'
             )}
             onClick={() => {
@@ -119,7 +119,7 @@ export function AuthPage({ appConfig }: AuthPageProps) {
             className={cn(
               'flex-1 py-2 font-semibold transition-colors',
               mode === 'signup'
-                ? 'border-b-2 border-primary text-primary'
+                ? 'border-primary text-primary border-b-2'
                 : 'text-muted-foreground hover:text-foreground'
             )}
             onClick={() => {
@@ -133,46 +133,46 @@ export function AuthPage({ appConfig }: AuthPageProps) {
         <form onSubmit={handleSubmit} className="space-y-4">
           {mode === 'signup' && (
             <div>
-              <label className="block text-sm font-medium mb-1">Name</label>
+              <label className="mb-1 block text-sm font-medium">Name</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full rounded border px-3 py-2 bg-background text-foreground"
+                className="bg-background text-foreground w-full rounded border px-3 py-2"
               />
             </div>
           )}
           <div>
-            <label className="block text-sm font-medium mb-1">Email</label>
+            <label className="mb-1 block text-sm font-medium">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded border px-3 py-2 bg-background text-foreground"
+              className="bg-background text-foreground w-full rounded border px-3 py-2"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Password</label>
+            <label className="mb-1 block text-sm font-medium">Password</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded border px-3 py-2 bg-background text-foreground"
+              className="bg-background text-foreground w-full rounded border px-3 py-2"
             />
           </div>
           {mode === 'signup' && (
             <div>
-              <label className="block text-sm font-medium mb-1">Confirm Password</label>
+              <label className="mb-1 block text-sm font-medium">Confirm Password</label>
               <input
                 type="password"
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
-                className="w-full rounded border px-3 py-2 bg-background text-foreground"
+                className="bg-background text-foreground w-full rounded border px-3 py-2"
               />
             </div>
           )}
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          <Button type="submit" className="w-full mt-2">
+          {error && <p className="text-destructive text-sm">{error}</p>}
+          <Button type="submit" className="mt-2 w-full">
             {mode === 'login' ? 'Login' : 'Signup'}
           </Button>
         </form>

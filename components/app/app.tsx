@@ -8,13 +8,12 @@ import type { AppConfig } from '@/app-config';
 import { AgentSessionProvider } from '@/components/agents-ui/agent-session-provider';
 import { StartAudioButton } from '@/components/agents-ui/start-audio-button';
 import { ViewController } from '@/components/app/view-controller';
-import { Toaster } from '@/components/ui/sonner';
-import { useAgentErrors } from '@/hooks/useAgentErrors';
-import { useDebugMode } from '@/hooks/useDebug';
-
 // authentication
 import { AuthProvider, useAuth } from '@/components/auth/AuthContext';
 import { AuthPage } from '@/components/auth/AuthPage';
+import { Toaster } from '@/components/ui/sonner';
+import { useAgentErrors } from '@/hooks/useAgentErrors';
+import { useDebugMode } from '@/hooks/useDebug';
 
 const IN_DEVELOPMENT = process.env.NODE_ENV !== 'production';
 
@@ -100,10 +99,10 @@ function AppInner({ appConfig, user }: AppInnerProps) {
   return (
     <AgentSessionProvider session={session}>
       <AppSetup />
-      <div className="absolute bottom-4 right-4 z-20">
+      <div className="absolute right-4 bottom-4 z-20">
         <button
           onClick={handleLogout}
-          className="px-3 py-2 text-sm font-medium text-white bg-destructive rounded hover:bg-red-700 transition-colors"
+          className="bg-destructive rounded px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700"
         >
           Logout
         </button>
