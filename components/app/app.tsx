@@ -99,7 +99,7 @@ function AppInner({ appConfig, user }: AppInnerProps) {
   return (
     <AgentSessionProvider session={session}>
       <AppSetup />
-      <div className="absolute right-4 bottom-4 z-20">
+      <div className="absolute left-4 top-4 z-20">
         <button
           onClick={handleLogout}
           className="bg-destructive rounded px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700"
